@@ -1,18 +1,48 @@
 import requests
 
-# 示例：手动赔率（默认 fallback）
-def get_odds():
+# =========================
+# 默认备用赔率（防止API失败）
+# =========================
+def fallback_odds():
     return {
         "home": 2.10,
-        "draw": 3.30,
-        "away": 3.40
+        "draw": 3.20,
+        "away": 3.60
     }
 
-# 如果你以后有 API（比如 OddsAPI）
-def get_odds_api(api_key):
-    url = f"https://api.the-odds-api.com/v4/sports/soccer/odds/?apiKey={api_key}"
+
+# =========================
+# 真实赔率API（OddsAPI）
+# =========================
+def get_real_odds(home, away, api_key=None):
+
+    # 如果没有API key → 用模拟
+    if not api_key:
+        return fallback_odds()
+
     try:
-        r = requests.get(url)
-        return r.json()
+        url = "https://api.the-odds-api.com/v4/sports/soccer/odds/"
+        
+        params = {
+            "apiKey": api_key,
+            "regions": "eu",
+            "markets": "h2h",
+            "oddsFormat": "decimal"
+        }
+
+        res = requests.get(url, params=params)
+        data = res.json()
+
+        # 简化处理（取第一场比赛）
+        match = data[0]
+
+        odds = match["bookmakers"][0]["markets"][0]["outcomes"]
+
+        return {
+            "home": odds[0]["price"],
+            "away": odds[1]["price"],
+            "draw": odds[2]["price"] if len(odds) > 2 else 3.20
+        }
+
     except:
-        return get_odds()
+        return fallback_odds()
