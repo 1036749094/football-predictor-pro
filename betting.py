@@ -1,26 +1,8 @@
-def ev(prob, odds):
-    return prob * odds - 1
+def kelly_bet(ev_label):
 
-
-def kelly(prob, odds):
-    return max(0, (prob * odds - 1) / (odds - 1))
-
-
-def analyze(prob, odds):
-    value = ev(prob, odds)
-    stake = kelly(prob, odds)
-
-    if value > 0.05:
-        signal = "🔥 强烈价值投注"
-    elif value > 0:
-        signal = "⚡ 小额价值"
+    if "高EV" in ev_label:
+        return "建议下注资金：5%~8%"
+    elif "正EV" in ev_label:
+        return "建议下注资金：2%~4%"
     else:
-        signal = "❌ 无价值"
-
-    return {
-        "prob": round(prob, 4),
-        "odds": odds,
-        "EV": round(value, 4),
-        "Kelly": round(stake, 4),
-        "signal": signal
-    }
+        return "建议不下注"
