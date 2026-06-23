@@ -33,3 +33,16 @@ def simulate(home_xg, away_xg):
         "draw": round(draw, 4),
         "away": round(away_win, 4)
     }
+def predict_match(home, away):
+    import math
+
+    home_xg, away_xg = xg_model(home, away)
+    result = simulate(home_xg, away_xg)
+
+    return {
+        "home_xg": round(home_xg, 2),
+        "away_xg": round(away_xg, 2),
+        "home_win": result["home"],
+        "draw": result["draw"],
+        "away_win": result["away"]
+    }
