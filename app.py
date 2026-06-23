@@ -1,18 +1,20 @@
 import streamlit as st
 from teams_db import teams
 from model import xg_model, simulate
-from odds_api import get_real_odds
-from betting import analyze
+from odds_api import get_odds
+from ev_engine import calc_ev
+from ranking import rank_bets
+from risk import kelly, confidence_score
 
-st.title("⚽ V21 足球量化系统（真实赔率版）")
+st.set_page_config(page_title="V24足球交易系统", layout="wide")
+
+st.title("⚽ V24 足球量化交易系统（专业分析版）")
 
 # ======================
-# 输入球队
+# 输入比赛
 # ======================
 home_team = st.selectbox("主队", list(teams.keys()))
 away_team = st.selectbox("客队", list(teams.keys()))
-
-api_key = st.text_input("Odds API Key（可选）")
 
 if home_team != away_team:
 
@@ -20,44 +22,51 @@ if home_team != away_team:
     away = teams[away_team]
 
     # ======================
-    # 模型计算
+    # 模型预测
     # ======================
     hxg, axg = xg_model(home, away)
-    result = simulate(hxg, axg)
+    prob = simulate(hxg, axg)
 
-    st.subheader("⚽ 比赛概率")
-    st.json(result)
+    st.subheader("📊 胜平负概率")
+    st.json(prob)
 
     # ======================
-    # 真实赔率
+    # 赔率
     # ======================
-    odds = get_real_odds(home_team, away_team, api_key)
+    odds = get_odds()
 
     st.subheader("💰 市场赔率")
     st.json(odds)
 
     # ======================
-    # EV分析
+    # EV计算
     # ======================
-    st.subheader("📊 价值投注分析")
+    ev_results = calc_ev(prob, odds)
 
-    home_bet = analyze(result["home"], odds["home"])
-    draw_bet = analyze(result["draw"], odds["draw"])
-    away_bet = analyze(result["away"], odds["away"])
-
-    st.json({
-        "主胜": home_bet,
-        "平局": draw_bet,
-        "客胜": away_bet
-    })
+    st.subheader("📈 EV分析")
+    st.json(ev_results)
 
     # ======================
-    # 最优选择
+    # 置信度 & 风险
     # ======================
-    best = max([
-        ("主胜", home_bet["EV"]),
-        ("平局", draw_bet["EV"]),
-        ("客胜", away_bet["EV"])
-    ], key=lambda x: x[1])
+    st.subheader("🧠 风险分析")
 
-    st.success(f"🔥 最优投注：{best[0]}")
+    risk_table = []
+    for k in ev_results:
+        risk_table.append({
+            "market": k,
+            "EV": ev_results[k]["EV"],
+            "Kelly": kelly(prob[k], odds[k]),
+            "Confidence": confidence_score(home, away)
+        })
+
+    st.json(risk_table)
+
+    # ======================
+    # 推荐榜单
+    # ======================
+    st.subheader("🔥 推荐排序")
+
+    ranking = rank_bets(ev_results)
+
+    st.json(ranking)
