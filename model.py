@@ -1,5 +1,6 @@
 import math
 
+
 def xg_model(home, away):
     home_xg = home["attack"] * away["defense"] * 1.2
     away_xg = away["attack"] * home["defense"] * 1.1
@@ -11,14 +12,12 @@ def poisson(lmbda, k):
 
 
 def simulate(home_xg, away_xg):
-
     max_goal = 5
 
     home_win = draw = away_win = 0
 
     for i in range(max_goal + 1):
         for j in range(max_goal + 1):
-
             p = poisson(home_xg, i) * poisson(away_xg, j)
 
             if i > j:
@@ -33,9 +32,9 @@ def simulate(home_xg, away_xg):
         "draw": round(draw, 4),
         "away": round(away_win, 4)
     }
-def predict_match(home, away):
-    import math
 
+
+def predict_match(home, away):
     home_xg, away_xg = xg_model(home, away)
     result = simulate(home_xg, away_xg)
 
