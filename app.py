@@ -1,79 +1,63 @@
 import streamlit as st
-import numpy as np
-from math import exp
-from betting import ev, kelly, recommendation
-from odds import get_odds
+from teams_db import teams
+from model import xg_model, simulate
+from odds_api import get_real_odds
+from betting import analyze
 
-st.set_page_config(page_title="V18 足球量化交易系统", layout="wide")
+st.title("⚽ V21 足球量化系统（真实赔率版）")
 
-st.title("⚽ 足球量化交易系统 V18（专业版）")
+# ======================
+# 输入球队
+# ======================
+home_team = st.selectbox("主队", list(teams.keys()))
+away_team = st.selectbox("客队", list(teams.keys()))
 
-# ---------------- 输入区 ----------------
-st.sidebar.header("📊 比赛参数（模型输入）")
+api_key = st.text_input("Odds API Key（可选）")
 
-base = st.sidebar.slider("联赛平均进球",1.0,2.0,1.3)
-attack = st.sidebar.slider("进攻能力",0.5,2.0,1.4)
-defense = st.sidebar.slider("防守能力",0.5,2.0,1.1)
-elo = st.sidebar.slider("Elo实力差", -300,300,50)
-finish = st.sidebar.slider("射门效率",0.5,2.0,1.1)
-form = st.sidebar.slider("近期状态",0.5,2.0,1.0)
-health = st.sidebar.slider("阵容健康",0.5,1.2,1.0)
-motivation = st.sidebar.slider("比赛动机",0.8,1.3,1.0)
+if home_team != away_team:
 
-def lam(b,a,d,e,f,fo,h,m):
-    return b*a*d*exp(e/600)*f*fo*h*m
+    home = teams[home_team]
+    away = teams[away_team]
 
-lh = lam(base,attack,defense,elo,finish,form,health,motivation)
-la = lam(base,1.2,1.0,-elo,0.95,1.0,1.0,1.0)
+    # ======================
+    # 模型计算
+    # ======================
+    hxg, axg = xg_model(home, away)
+    result = simulate(hxg, axg)
 
-st.subheader("⚽ 预期进球（xG）")
-st.write("主队：", round(lh,3))
-st.write("客队：", round(la,3))
+    st.subheader("⚽ 比赛概率")
+    st.json(result)
 
-# ---------------- 模拟 ----------------
-n = 100000
-hg = np.random.poisson(lh,n)
-ag = np.random.poisson(la,n)
+    # ======================
+    # 真实赔率
+    # ======================
+    odds = get_real_odds(home_team, away_team, api_key)
 
-p_home = np.mean(hg > ag)
-p_draw = np.mean(hg == ag)
-p_away = np.mean(hg < ag)
+    st.subheader("💰 市场赔率")
+    st.json(odds)
 
-st.subheader("📊 胜平负概率")
-col1,col2,col3 = st.columns(3)
+    # ======================
+    # EV分析
+    # ======================
+    st.subheader("📊 价值投注分析")
 
-col1.metric("主胜", f"{p_home:.2%}")
-col2.metric("平局", f"{p_draw:.2%}")
-col3.metric("客胜", f"{p_away:.2%}")
+    home_bet = analyze(result["home"], odds["home"])
+    draw_bet = analyze(result["draw"], odds["draw"])
+    away_bet = analyze(result["away"], odds["away"])
 
-# ---------------- 赔率 ----------------
-st.subheader("💰 真实赔率（可手动/接口）")
+    st.json({
+        "主胜": home_bet,
+        "平局": draw_bet,
+        "客胜": away_bet
+    })
 
-odds = get_odds()
+    # ======================
+    # 最优选择
+    # ======================
+    best = max([
+        ("主胜", home_bet["EV"]),
+        ("平局", draw_bet["EV"]),
+        ("客胜", away_bet["EV"])
+    ], key=lambda x: x[1])
 
-h_odds = st.number_input("主胜赔率", value=odds["home"])
-d_odds = st.number_input("平局赔率", value=odds["draw"])
-a_odds = st.number_input("客胜赔率", value=odds["away"])
-
-# ---------------- EV分析 ----------------
-st.subheader("📈 投注价值分析（EV + Kelly）")
-
-home_r = recommendation(p_home, h_odds)
-draw_r = recommendation(p_draw, d_odds)
-away_r = recommendation(p_away, a_odds)
-
-st.json({
-    "主胜": home_r,
-    "平局": draw_r,
-    "客胜": away_r
-})
-
-# ---------------- 推荐 ----------------
-best = max([
-    ("主胜", home_r["EV"]),
-    ("平局", draw_r["EV"]),
-    ("客胜", away_r["EV"])
-], key=lambda x: x[1])
-
-st.subheader("🔥 最优投注建议")
-st.success(f"推荐选择：{best[0]}（EV最高）")
+    st.success(f"🔥 最优投注：{best[0]}")
