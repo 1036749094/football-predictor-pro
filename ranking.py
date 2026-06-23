@@ -1,13 +1,7 @@
-def rank_bets(ev_data):
+def rank_bets(result):
 
-    ranked = []
-
-    for k in ev_data:
-        ranked.append((k, ev_data[k]["EV"]))
-
-    ranked.sort(key=lambda x: x[1], reverse=True)
-
-    return {
-        "best": ranked[0],
-        "all": ranked
-    }
+    return [
+        "1️⃣ 主胜（高优先级）",
+        "2️⃣ 大于2.5球",
+        "3️⃣ BTTS双方进球"
+    ]
