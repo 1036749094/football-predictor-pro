@@ -1,6 +1,5 @@
 import math
 
-
 def xg_model(home, away):
     home_xg = home["attack"] * away["defense"] * 1.2
     away_xg = away["attack"] * home["defense"] * 1.1
@@ -14,7 +13,9 @@ def poisson(lmbda, k):
 def simulate(home_xg, away_xg):
     max_goal = 5
 
-    home_win = draw = away_win = 0
+    home_win = 0.0
+    draw = 0.0
+    away_win = 0.0
 
     for i in range(max_goal + 1):
         for j in range(max_goal + 1):
